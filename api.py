@@ -15,9 +15,6 @@ def base():
 
 @app.route("/cmax", methods=["POST"])
 def solve_cmax():
-    if not request.is_json:
-        return jsonify({"error": "Content-Type must be application/json"}), 415
-
     instance_json = request.get_json(silent=True)
     if instance_json is None:
         return jsonify({"error": "Invalid or empty JSON provided"}), 400
@@ -28,12 +25,6 @@ def solve_cmax():
 
         return jsonify(solution.set_object()), 200
 
-    except AttributeError as ae:
-        logger.error(f"Serialization error: {str(ae)}")
-        return (
-            jsonify({"error": "Invalid solution object structure"}),
-            500,
-        )
     except Exception as e:
         logger.exception("An unexpected error occurred during processing")
         return (

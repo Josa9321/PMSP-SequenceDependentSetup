@@ -134,7 +134,7 @@ def create_machines_df(solution_df):
             'Processing Time': processing_time,
             'Setup Time': setup_time,
             'Idle Time': idle_time,
-            '% Capacity': processing_time/makespan,
+            '% Production': processing_time/makespan,
             '% Setup': setup_time/makespan,
             '% Idle': idle_time/makespan
         })

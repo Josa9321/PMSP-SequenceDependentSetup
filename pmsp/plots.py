@@ -14,8 +14,8 @@ def gantt_chart(original_df: pd.DataFrame, setup_idx=1, due_date_idx=-1):
     fig = px.timeline(solution_df, x_start="Start", x_end="Finish", y="Machine", color='Type', text='Task')
     fig.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom up
     fig.update_layout(
-                      plot_bgcolor='rgba(0, 0, 0, 0)',
-                      paper_bgcolor='rgba(0, 0, 0, 0)',
+                      plot_bgcolor="white",
+                      paper_bgcolor="white",
                       xaxis=dict(tickformat = '%s'),
                       yaxis_title = r'',
                       legend=dict(
