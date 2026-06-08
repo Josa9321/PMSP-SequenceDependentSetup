@@ -1,0 +1,208 @@
+\documentclass{article}
+\usepackage[a4paper,top=2cm,bottom=2cm,left=3cm,right=3cm]{geometry}
+\usepackage[english]{babel}
+\usepackage{fontspec} 
+\setmainfont{Times New Roman}
+
+
+\usepackage{times}
+
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath,amsthm,mathtools,amsfonts,amssymb,textcomp} % Math packages
+
+\usepackage{fancybox}
+\usepackage{algorithm}
+\usepackage[noend]{algorithmic}
+\usepackage{bm}
+\usepackage{color}
+\usepackage{colortbl}
+\usepackage{textpos}
+\usepackage{setspace}
+% \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lscape}
+\usepackage{ragged2e}
+\usepackage{etoolbox}
+\usepackage{lipsum}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[acronym]{glossaries}
+
+\usepackage{tikz}
+\usepackage{pdfpages}
+\usepackage{booktabs}
+
+\usepackage{array}
+\usepackage{supertabular}
+\usepackage{listings}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{hhline}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{accents}
+
+\definecolor{highlight}{RGB}{30, 80, 160}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\white}{\textcolor{white}}
+
+\newtheorem{teorema}{Teorema}
+\newtheorem{definicao}{Definição}
+\newtheorem{axioma}{Axioma}
+\newtheorem{proposicao}{Proposição}
+
+
+% \setcounter{section}{1}
+
+\title{
+    \textbf{Mixed-Integer Programming Formulation}\\[0.4em]
+    \large{Unrelated Parallel Machine Scheduling with Sequence-Dependent Setup Times}\\[0.4em]
+    \normalsize R\,|\,$s_{ij}$\,|\,$C_{\max}$
+% Unrelated Parallel Machine Scheduling Problem with Sequence Dependent Setups
+}
+\date{\today}
+\author{Josa Ferreira\footnote{josenildo.junior9321@gmail.com}} 
+% \\ 
+% {\email{josenildo.junior9321@gmail.com}} \\
+
+
+% Para 
+\usepackage{tocloft}
+\setlength{\cftsecindent}{0pt}% Remove indent for \section
+\setlength{\cftsubsecindent}{0pt}% Remove indent for \subsection
+\setcounter{tocdepth}{2}
+
+\renewenvironment{abstract}
+ {\begin{flushleft}
+  \bfseries \abstractname\vspace{-.5em}\vspace{0pt}
+  \end{flushleft}
+  \list{}{
+    \setlength{\leftmargin}{0pt}%
+    \setlength{\rightmargin}{\leftmargin}%
+  }%
+  \item\relax}
+ {\endlist}
+
+\bibliographystyle{plain}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This portfolio project presents a Mixed-Integer Linear Programming (MILP) model for the unrelated parallel machine scheduling problem with sequence-dependent setup times ($R \mid s_{ij} \mid C_{\max}$). The formulation minimizes the total makespan ($C_{\max}$) for independent jobs across heterogeneous machines. Featuring a complete mathematical framework—including assignment, flow conservation, and subtour elimination constraints—this project serves as a technical demonstration of applying mathematical optimization to complex manufacturing and logistics challenges.
+\end{abstract}
+
+\tableofcontents
+
+\vspace{0.5cm}
+
+\noindent \rule[0.4cm]{5cm}{0.1pt}
+
+\noindent \textbf{Keywords:} Parallel Machine Scheduling Problem; Makespan; Sequence Dependent Setup.
+
+\section{Mathematical Formulation}
+
+\subsection{Problem Description}
+
+The problem $R \mid s_{ij} \mid C_{\max}$ consists of scheduling a set of independent jobs on a set of unrelated parallel machines. 
+Under this configuration, each job must be processed exactly once on any machine. 
+Because the machines are unrelated, they process jobs at varying speeds. 
+Furthermore, transitioning between consecutive jobs on the same machine incurs a sequence-dependent setup time. 
+The objective is to minimize the makespan, defined as the time at which the last job completes processing.
+
+\subsection{Sets}
+
+\begin{itemize}
+    \item $M = \{1, 2, \ldots, m\}$: Set of $m$ unrelated parallel machines.
+    \item $N = \{1, 2, \ldots, n\}$: Set of $n$ available jobs.
+    \item $N_0 = N \cup \{0\}$: Extended set of jobs, including a dummy source node ($0$) representing the start of a machine's sequence.
+\end{itemize}
+
+\subsection{Parameters}
+
+\begin{itemize}
+    \item $p_{ij}$: Processing time of job $j \in N$ on machine $i \in M$.
+    \item $s_{ijk}$: Sequence-dependent setup time incurred when transitioning from job $j \in N_0$ to job $k \in N_0$ on machine $i \in M$.
+\end{itemize}
+
+\subsection{Decision Variables}
+
+\begin{itemize}
+    \item $x_{ijk} = 1$ if job $j \in N_0$ immediately precedes job $k \in N_0$ on machine $i \in M$; $0$ otherwise.
+    \item $y_{ij} = 1$ if job $j \in N$ is processed on machine $i \in M$; $0$ otherwise.
+    \item $C_{\max}$: Continuous variable representing the overall makespan.
+\end{itemize}
+
+\subsection{Model}
+
+The mixed-integer linear programming (MILP) model is formulated as follows:
+
+\begin{align}
+    \min \quad & C_{\max} \label{obj:makespan} \\
+    \text{S.t.} \quad & \sum_{i \in M} y_{ij} = 1 && \forall j \in N \label{co:process_all} \\
+    & \sum_{\substack{k \in N_0\\k \neq j}} x_{ijk} = y_{ij} && \forall i \in M, j \in N \label{co:connect} \\
+    & \sum_{\substack{j \in N_0\\j \neq k}} x_{ijk} = \sum_{j \in N_0, j \neq k} x_{ikj} && \forall i \in M, k \in N \label{co:flow} \\
+    & \sum_{k \in N_0} x_{i0k} = 1 && \forall i \in M \label{co:start} \\
+    & \sum_{j \in S} \sum_{k \in N_0 \setminus S} x_{ijk} \geq y_{ih}, && \forall h \in S, S \subset N_0, i \in M \label{co:subtour} \\
+    & \sum_{j \in N_0} \sum_{\substack{k \in N_0\\k \neq j}} s_{ijk} x_{ijk} + \sum_{j \in N} p_{ij} y_{ij} \leq C_{max}, && \forall i \in M \label{co:makespan}
+\end{align}
+
+The objective function \eqref{obj:makespan} minimizes the makespan ($C_{\max}$). 
+Constraints \eqref{co:process_all} ensure that each job is assigned to and processed by exactly one machine. 
+Constraints \eqref{co:connect} link the routing and assignment variables, dictating that if a job is processed on a machine, it must immediately precede another node in that machine's sequence. 
+Constraints \eqref{co:flow} enforce flow conservation, guaranteeing that a machine must leave any job node it enters. 
+Constraints \eqref{co:start} require every machine to initiate its routing sequence from the dummy origin (node 0). 
+Constraints \eqref{co:subtour} represent the subtour elimination constraints (SECs), which prevent invalid isolated loops within the job sequences. 
+Subtour elimination constraints were implemented as lazy constraints, given that their total count grows exponentially with the number of jobs.
+Finally, Constraints \eqref{co:makespan} defines makespan.
+
+\section{Computational Results}
+
+Following the benchmark protocol proposed by \cite{eva2011}, 20 instances were generated: 10 with $m=2$ machines and $n=5$ jobs, and 10 with $m=4$ machines and $n=10$ jobs. Processing times ($p$) and setup times ($s$) were independently sampled from the discrete uniform distribution $UD(1,99)$.
+To ensure reproducibility, all generated instances and their corresponding results were stored in a SQLite database (\texttt{instances.sqlite}).
+Table~\ref{tab:results} presents the optimal makespan ($C_{\max}$) and solver runtime (in seconds) obtained for the 20 randomly generated instances under the two problem configurations.
+
+\begin{table}[ht]
+\centering
+\caption{Computational results for small and medium instances.}
+\label{tab:results}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}cccrr@{}}
+\toprule
+$m$ & $n$ & Instance & $C_{\max}$ & Time (s) \\
+\midrule
+2 & 5  & 0  & 184.0   & 0.098 \\
+2 & 5  & 1  & 168.0   & 0.118 \\
+2 & 5  & 2  & 178.0   & 0.022 \\
+2 & 5  & 3  & 217.0   & 0.044 \\
+2 & 5  & 4  & 206.0   & 0.188 \\
+2 & 5  & 5  & 214.0   & 0.138 \\
+2 & 5  & 6  & 164.0   & 0.098 \\
+2 & 5  & 7  & 207.0   & 0.040 \\
+2 & 5  & 8  & 170.0   & 0.042 \\
+2 & 5  & 9  & 218.0   & 0.179 \\
+\midrule
+4 & 10 & 0  & 168.0   & 10.060 \\
+4 & 10 & 1  & 157.0   &  5.048 \\
+4 & 10 & 2  & 142.0   &  8.521 \\
+4 & 10 & 3  & 161.0   &  8.679 \\
+4 & 10 & 4  & 147.0   & 11.886 \\
+4 & 10 & 5  & 179.0   &  6.523 \\
+4 & 10 & 6  & 180.0   & 16.772 \\
+4 & 10 & 7  & 151.0   &  6.149 \\
+4 & 10 & 8  & 153.0   & 30.336 \\
+4 & 10 & 9  & 150.0   & 12.305 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results illustrate the expected growth in computational effort as the instance size increases. 
+For $m=2$, $n=5$, the solver consistently finds the optimum in under 0.2 seconds (average $\approx 0.097$\,s). 
+Scaling to $m=4$, $n=10$ raises the average runtime to $\approx 11.6$\,s, with the hardest instance (index~8)
+requiring 30.3 seconds. 
+
+\bibliography{ref}
+
+\end{document}end{document}

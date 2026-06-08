@@ -5,6 +5,8 @@ import json
 from ast import literal_eval
 from itertools import product
 
+from .utils import SolutionPMSP
+
 class InstancePMSP:
     def __init__(self, processing_time: np.ndarray, setup_time: np.ndarray):
         m, n = processing_time.shape
@@ -91,16 +93,35 @@ class InstanceDB:
 
     def mk_tables_if_not_exists(self):
         self.cur.execute("""
-                         CREATE TABLE IF NOT EXISTS instances(
-                         m INTEGER,
-                         n INTEGER,
-                         o INTEGER,
-                         idx INTEGER,
-                         processing_time TEXT,
-                         setup_time TEXT,
-                         PRIMARY KEY (m, n, o, idx)
-                         )
-                         """)
+        PRAGMA foreign_keys=ON
+        """)
+
+        self.cur.execute("""
+        CREATE TABLE IF NOT EXISTS instances(
+        m INTEGER,
+        n INTEGER,
+        o INTEGER,
+        idx INTEGER,
+        processing_time TEXT,
+        setup_time TEXT,
+        PRIMARY KEY (m, n, o, idx)
+        )
+        """)
+
+        self.cur.execute("""
+        CREATE TABLE IF NOT EXISTS results (
+        m INTEGER,
+        n INTEGER,
+        o INTEGER,
+        idx INTEGER,
+        obj FLOAT,
+        time FLOAT,
+        allocation TEXT,
+        sequences TEXT,
+        PRIMARY KEY (m, n, o, idx),
+        FOREIGN KEY (m, n, o, idx) REFERENCES instances (m, n, o, idx)
+        )
+        """)
         self.conn.commit()
 
     def create_instances(self, m, n, num_instances, group=0, interval_p: tuple = (1, 99), interval_s: tuple = (1, 99)):
@@ -135,11 +156,20 @@ class InstanceDB:
         setup_time = np.array(literal_eval(s_exec.fetchall()[0][0]))
         return InstancePMSP(processing_time, setup_time)
 
-
-
-
-
-
-
-
-
+    def save_results(self, solution: SolutionPMSP, m, n, o, idx):
+        solution_object = solution.set_object()
+        self.cur.execute("""
+        INSERT OR REPLACE INTO results VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+                         (
+                          m,
+                          n,
+                          o,
+                          idx,
+                          solution.obj,
+                          solution.time,
+                          json.dumps(solution_object['allocations']),
+                          json.dumps(solution_object['sequences_set'])
+                          )
+                         )
+        self.conn.commit()

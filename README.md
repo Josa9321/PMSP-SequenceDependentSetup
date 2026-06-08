@@ -18,7 +18,7 @@ In other words, given a set of jobs and a set of machines, where each job can be
 
 ## Mathematical Model
 
-The optimization model is formulated as a Mixed-Integer Program. A formal LaTeX document with the complete formulation is included in this repository: [`model.tex`](./model.tex).
+The optimization model is formulated as a Mixed-Integer Program (MIP). A complete LaTeX document describing the formulation is included in this repository: [`model.tex`](./model.tex). The document also presents computational results and discusses the model's performance on a set of test instances.
 
 The model uses **lazy constraints** to handle the sub-tour elimination constraints. These are constraints whose full set is exponentially large but which can be enforced incrementally: the solver is run, if any violated constraint is identified, it is added to the model, and the solver is re-run. This process repeats until no violation is found.
 

@@ -4,8 +4,6 @@ import pandas as pd
 import json
 import pyomo.environ as pyo
 
-from .instance import InstancePMSP
-
 class SolutionPMSP:
     def __init__(self, model, results, time=0, test_sequences=True):
         self.M = sorted(model.M)
@@ -78,7 +76,7 @@ class SolutionPMSP:
         with open(address, 'w') as f:
             json.dump(solution_as_dict, f, indent=4)
 
-def create_solution_df(sequences_set, instance: InstancePMSP):
+def create_solution_df(sequences_set, instance):
     machine_current_time = np.zeros(instance.m)
     last_job = np.zeros(instance.m, int)
     data = []
