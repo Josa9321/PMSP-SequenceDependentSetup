@@ -6,6 +6,8 @@ import pyomo.environ as pyo
 
 class SolutionPMSP:
     def __init__(self, model, results, time=0, test_sequences=True):
+        self.method = model.method
+
         self.M = sorted(model.M)
         self.N0 = sorted(model.N0)
         self.N = sorted(model.N)
@@ -17,6 +19,7 @@ class SolutionPMSP:
 
         self._get_allocations(model)
         self._get_sequences(model)
+        self._get_completion_time(model)
 
         if test_sequences:
             self._test_allocations()
@@ -49,6 +52,22 @@ class SolutionPMSP:
 
             self.sequences_set.append(sequence)
 
+    def _get_completion_time(self, model):
+        self.completion_time = np.zeros(self.n)
+        machine_current_time = np.zeros(self.m)
+        last_job = np.zeros(self.m, int)
+        for (i, sequence) in enumerate(self.sequences_set):
+            for k in sequence[1:]:
+                if k == 0:
+                    continue
+
+                j = last_job[i]
+                start_job_time = machine_current_time[i] + model.s[i, j, k]
+                self.completion_time[k] = start_job_time + model.p[i, k]
+
+                machine_current_time[i] += model.s[i, j, k] + model.p[i, k]
+                last_job[i] = k
+
     def _test_allocations(self):
         for j in self.N:
             i = self.allocations[j]
@@ -63,36 +82,38 @@ class SolutionPMSP:
 
     def set_object(self):
         solution_as_dict = {
+                'method': self.method,
                 'sequences_set': self.sequences_set,
                 'allocations': self.allocations.tolist(),
+                'completion_time': self.completion_time.tolist(),
                 'obj': self.obj,
                 'time': self.time
                 }
         return solution_as_dict
-
 
     def save_json(self, address):
         solution_as_dict = self.set_object()
         with open(address, 'w') as f:
             json.dump(solution_as_dict, f, indent=4)
 
-def create_solution_df(sequences_set, instance):
+def create_solution_df(solution, instance):
     machine_current_time = np.zeros(instance.m)
     last_job = np.zeros(instance.m, int)
     data = []
+    sequences_set = solution['sequences_set']
+    completion_time = solution['completion_time']
     for (i, sequence) in enumerate(sequences_set):
         for k in sequence[1:]:
             if k == 0:
                 continue
 
             j = last_job[i]
-            start_job_time = machine_current_time[i] + instance.setup_time[i, j, k]
 
             data.append({
                         'Machine': i,
                         'Task': f's_{j}{k}',
-                        'Start': machine_current_time[i],
-                        'Finish': start_job_time,
+                        'Start': completion_time[k] - instance.setup_time[i, j, k] - instance.processing_time[i, k],
+                        'Finish': completion_time[k] - instance.processing_time[i, k],
                         'Type': 'Setup',
                         'Time': instance.setup_time[i, j, k]
                 })
@@ -100,15 +121,15 @@ def create_solution_df(sequences_set, instance):
             data.append({
                         'Machine': i,
                         'Task': f'Job {k}',
-                        'Start': start_job_time,
-                        'Finish': start_job_time + instance.processing_time[i, k],
+                        'Start': completion_time[k] - instance.processing_time[i, k],
+                        'Finish': completion_time[k],
                         'Type': 'Job',
                         'Time': instance.processing_time[i, k]
                     })
-            machine_current_time[i] += instance.setup_time[i, j, k] + instance.processing_time[i, k]
             last_job[i] = k
 
         k = sequences_set[i][-1]
+        machine_current_time[i] = completion_time[k]
         data.append({
                     'Machine': i,
                     'Task': f's_{k}0',

@@ -18,7 +18,8 @@ def solve_instances_set(method, address, jobs_set: list[int], machines_set: list
         solution = solve_instance(instance, method)
         print(f'{m:>4}{n:>4}{group:>4}{idx:>4} {solution.time:>10.4f} {solution.obj:>10.4f}')
 
-        db.save_results(solution, m, n, group, idx)
+        solution_object = solution.set_object()
+        db.save_results(solution_object, m, n, group, idx)
 
     print('-'*38)
     return print("Instances solved")

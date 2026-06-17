@@ -5,46 +5,36 @@ import networkx as nx
 from itertools import product
 from pyomo.opt import SolverStatus, TerminationCondition
 from pyomo.common.timing import tic, toc
+from logging import error
 
 from .utils import SolutionPMSP
 
-def solve_instance(instance, method={'time': 120, 'gap': 1e-3, 'print_level': 0}):
-    model = create_cmax_model(instance)
-
+def solve_instance(instance, method={'time': 120, 'gap': 1e-3, 'print_level': 0, 'model': 'cmax'}):
     solver = pyo.SolverFactory('highs')
     solver.options['time_limit'] = method['time']
     solver.options['mip_rel_gap'] = method['gap']
     solver.options['output_flag'] = method['print_level']
 
     tic(msg=None)
-    results = _solve_while_subtour_is_generated(solver, model)
+    if method['model'] == 'cmax':
+        model = create_cmax_model(instance, method['model'])
+        results = _solve_cmax_while_subtour_is_generated(solver, model)
+    elif method['model'] == 'sum_e-t':
+        model = create_et_model(instance, method['model'])
+        results = solver.solve(model)
+    else:
+        error(f"{method['model']} not defined. Choose 'cmax' or 'sum_e-t'")
+
     solve_time = toc(msg=None)
     return SolutionPMSP(model, results, solve_time)
 
-def _solve_while_subtour_is_generated(solver, model):
-    results = solver.solve(model)
-    do_next_iter = (results.solver.status == SolverStatus.ok) and (
-            results.solver.termination_condition != TerminationCondition.infeasibleOrUnbounded)
-    while do_next_iter:
-        do_next_iter = False
+##############
+# Cmax Model #
+##############
 
-        sets = []
-        for i in model.M:
-            _get_all_subtours_sets(sets, model, i)
-
-        for S in sets:
-            for i in model.M:
-                for h in S:
-                    model.c6.add(expr=sum(model.x[i, j, k] for j in S for k in model.N0 if not(k in S)) >= model.y[i, h])
-
-        if len(sets) > 0:
-            results = solver.solve(model)
-            do_next_iter = (results.solver.status == SolverStatus.ok) and (
-                    results.solver.termination_condition != TerminationCondition.infeasibleOrUnbounded)
-    return results
-
-def create_cmax_model(instance: InstancePMSP):
+def create_cmax_model(instance: InstancePMSP, method_name):
     m = pyo.ConcreteModel()
+    m.method = method_name
 
     m.M = pyo.Set(initialize=instance.M)
     m.N0 = pyo.Set(initialize=instance.N0)
@@ -64,7 +54,7 @@ def create_cmax_model(instance: InstancePMSP):
     m.c3 = pyo.Constraint(m.M, m.N, rule=c3_cmax)
     m.c4 = pyo.Constraint(m.M, m.N, rule=c4_cmax)
     m.c5 = pyo.Constraint(m.M, rule=c5_cmax)
-    m.c6 = pyo.ConstraintList()
+    m.gsec = pyo.ConstraintList()
     m.c7 = pyo.Constraint(m.M, rule=c7_cmax)
 
     for i in m.M:
@@ -89,12 +79,54 @@ def c4_cmax(m, i, k):
 def c5_cmax(m, i):
     return sum(m.x[i, 0, k] for k in m.N0) == 1
 
-def c6_cmax(m, h, S, i):
-    return sum(m.x[i, j, k] for j in S for k in m.N0 if not(k in S)) >= m.y[i, h]
-
 def c7_cmax(m, i):
     return sum(m.s[i, j, k] * m.x[i, j, k] for j in m.N0 for k in m.N0 if j != k
                ) + sum(m.p[i, j] * m.y[i, j] for j in m.N) <= m.Cmax
+
+#####################################
+# Sum earliness and tardiness model #
+#####################################
+
+def create_et_model(instance: InstancePMSP, method_name):
+    m = pyo.ConcreteModel()
+    m.method = method_name
+
+    m.M = pyo.Set(initialize=instance.M)
+    m.N0 = pyo.Set(initialize=instance.N0)
+    m.N = pyo.Set(initialize=instance.N)
+
+    m.p = pyo.Param(m.M, m.N, initialize=instance.p)
+    m.s = pyo.Param(m.M, m.N0, m.N0, initialize=instance.s)
+
+    return m
+
+
+##########################
+# GSEC Related Functions #
+##########################
+
+def _solve_cmax_while_subtour_is_generated(solver, model):
+    results = solver.solve(model)
+    do_next_iter = (results.solver.status == SolverStatus.ok) and (
+            results.solver.termination_condition != TerminationCondition.infeasibleOrUnbounded)
+    while do_next_iter:
+        do_next_iter = False
+
+        sets = []
+        for i in model.M:
+            _get_all_subtours_sets(sets, model, i)
+
+        for S in sets:
+            for i in model.M:
+                for h in S:
+                    model.gsec.add(expr=sum(model.x[i, j, k] for j in S for k in model.N0 if not(k in S)) >= model.y[i, h])
+
+        if len(sets) > 0:
+            results = solver.solve(model)
+            do_next_iter = (results.solver.status == SolverStatus.ok) and (
+                    results.solver.termination_condition != TerminationCondition.infeasibleOrUnbounded)
+    return results
+
 
 def _get_all_subtours_sets(subtours_sets, model, i):
     g = _generate_graph(model, i)

@@ -143,15 +143,17 @@ Example:
 
 ```json
 {
-    "allocations": [-1, 2, 3, 2, 0, 1, 0, 1, 2, 3],
-    "obj": 168.0000000000001,
+    "allocations": [ -1, 3, 2, 2, 2, 0, 1, 0, 1, 3],
+    "completion_time": [0.0, 133.0, 146.0, 136.0, 88.0, 156.0, 53.0, 53.0, 142.0, 67.0],
+    "method": "cmax",
+    "obj": 171.0,
     "sequences_set": [
-        [0, 4, 6],
         [0, 7, 5],
-        [0, 1, 3, 8],
-        [0, 2, 9]
+        [0, 6, 8],
+        [0, 4, 3, 2],
+        [0, 9, 1]
     ],
-    "time": 8.14749402400048
+    "time": 5.727344638000432
 }
 ```
 
@@ -159,7 +161,9 @@ Example:
 | Field | Description |
 |---------|-------------|
 | `allocations` | Machine assigned to each job |
-| `obj` | Makespan value |
+| `completion_time` | Job completion time |
+| `method` | Method used to solve problem |
+| `obj` | Objective value dependind on the method |
 | `sequences_set` | Job sequence on each machine |
 | `time` | Solve time (seconds) |
 
@@ -194,26 +198,28 @@ The solver returns the optimal job assignment and sequencing. Here, `J0` is a du
 
 | Machine | Allocated Jobs | Job Sequence |
 |----------|----------|----------|
-| **M0** | 4, 6 | J0 → J4 → J6 → J0 |
-| **M1** | 5, 7 | J0 → J7 → J5 → J0 |
-| **M2** | 1, 3, 8 | J0 → J1 → J3 → J8 → J0 |
-| **M3** | 2, 9 | J0 → J2 → J9 → J0 |
+| **M0** | 5, 7 | J0 → J7 → J5 → J0 |
+| **M1** | 6, 8 | J0 → J6 → J8 → J0 |
+| **M2** | 2, 3, 4 | J0 → J4 → J3 → J2 → J0 |
+| **M3** | 1, 9 | J0 → J9 → J1 → J0 |
 
-> **C<sub>max</sub> = 168**
+> **C<sub>max</sub> = 171**
 
 ### JSON Solution Format
 
 ```json
 {
-    "allocations": [-1, 2, 3, 2, 0, 1, 0, 1, 2, 3],
-    "obj": 168.0000000000001,
+    "allocations": [ -1, 3, 2, 2, 2, 0, 1, 0, 1, 3],
+    "completion_time": [0.0, 133.0, 146.0, 136.0, 88.0, 156.0, 53.0, 53.0, 142.0, 67.0],
+    "method": "cmax",
+    "obj": 171.0,
     "sequences_set": [
-        [0, 4, 6],
         [0, 7, 5],
-        [0, 1, 3, 8],
-        [0, 2, 9]
+        [0, 6, 8],
+        [0, 4, 3, 2],
+        [0, 9, 1]
     ],
-    "time": 8.14749402400048
+    "time": 5.727344638000432
 }
 ```
 
@@ -243,63 +249,63 @@ pmsp.gantt_chart(df, setup_idx=0)
 ![Example schedule](./imgs/example_solution.png)
 ---
 
-### Machine Utilization Analysis
-
-Besides obtaining the schedule that minimizes the makespan, additional insights can be extracted from the solution. The function `pmsp.create_machines_df` summarizes how each machine spends its time.
-
-```python
-pmsp.create_machines_df(df)
-```
-
-**Output**
-
-| Machine | Processing Time | Setup Time | Idle Time | % Production | % Setup | % Idle |
-|----------|----------:|----------:|----------:|----------:|----------:|----------:|
-| 0 | 94 | 66 | 8 | 55.95% | 39.29% | 4.76% |
-| 1 | 88 | 73 | 7 | 52.38% | 43.45% | 4.17% |
-| 2 | 98 | 45 | 25 | 58.33% | 26.79% | 14.88% |
-| 3 | 117 | 51 | 0 | 69.64% | 30.36% | 0.00% |
-
-Several observations can be made from this summary:
-
-- Setup operations consume a substantial portion of the schedule. On **Machine 1**, setup activities account for more than **43%** of the total time.
-- Even in the optimal solution, machines spend a significant amount of time preparing for production rather than processing jobs.
-- **Machine 3** is the most utilized resource, remaining busy throughout the entire planning horizon with no idle time.
-- **Machine 2** has the highest idle time, suggesting that balancing the workload more evenly may be difficult due to the interaction between processing and setup times.
-- The results indicate that reducing setup times could have a significant impact on overall system performance, potentially yielding larger gains than improving processing times alone.
-
-### Setup Time Analysis
-
-The setup operations can also be examined individually:
-
-```python
-df[df.Type == "Setup"]
-```
-
-**Output**
-
-| Machine | Setup | Duration |
-|----------|----------|----------:|
-| 0 | s₀₄ | 12 |
-| 0 | s₄₆ | 30 |
-| 0 | s₆₀ | 24 |
-| 1 | s₀₇ | 16 |
-| 1 | s₇₅ | 37 |
-| 1 | s₅₀ | 20 |
-| 2 | s₀₁ | 3 |
-| 2 | s₁₃ | 33 |
-| 2 | s₃₈ | 3 |
-| 2 | s₈₀ | 6 |
-| 3 | s₀₂ | 31 |
-| 3 | s₂₉ | 2 |
-| 3 | s₉₀ | 18 |
-
-This table highlights which transitions are most expensive. For example:
-
-- The setup from **J7 → J5** on Machine 1 requires **37** time units, the largest setup in the schedule.
-- Several setups are relatively small (e.g., **J2 → J9** and **J3 → J8**), showing that some job sequences are naturally more compatible than others.
-- The total setup time varies considerably across machines, reinforcing the importance of considering sequence-dependent setups when building schedules.
-
-These analyses help explain *why* a schedule is optimal and can guide improvement efforts, such as setup reduction programs, machine specialization, or process redesign.
+<!-- ### Machine Utilization Analysis -->
+<!---->
+<!-- Besides obtaining the schedule that minimizes the makespan, additional insights can be extracted from the solution. The function `pmsp.create_machines_df` summarizes how each machine spends its time. -->
+<!---->
+<!-- ```python -->
+<!-- pmsp.create_machines_df(df) -->
+<!-- ``` -->
+<!---->
+<!-- **Output** -->
+<!---->
+<!-- | Machine | Processing Time | Setup Time | Idle Time | % Production | % Setup | % Idle | -->
+<!-- |----------|----------:|----------:|----------:|----------:|----------:|----------:| -->
+<!-- | 0 | 94 | 66 | 8 | 55.95% | 39.29% | 4.76% | -->
+<!-- | 1 | 88 | 73 | 7 | 52.38% | 43.45% | 4.17% | -->
+<!-- | 2 | 98 | 45 | 25 | 58.33% | 26.79% | 14.88% | -->
+<!-- | 3 | 117 | 51 | 0 | 69.64% | 30.36% | 0.00% | -->
+<!---->
+<!-- Several observations can be made from this summary: -->
+<!---->
+<!-- - Setup operations consume a substantial portion of the schedule. On **Machine 1**, setup activities account for more than **43%** of the total time. -->
+<!-- - Even in the optimal solution, machines spend a significant amount of time preparing for production rather than processing jobs. -->
+<!-- - **Machine 3** is the most utilized resource, remaining busy throughout the entire planning horizon with no idle time. -->
+<!-- - **Machine 2** has the highest idle time, suggesting that balancing the workload more evenly may be difficult due to the interaction between processing and setup times. -->
+<!-- - The results indicate that reducing setup times could have a significant impact on overall system performance, potentially yielding larger gains than improving processing times alone. -->
+<!---->
+<!-- ### Setup Time Analysis -->
+<!---->
+<!-- The setup operations can also be examined individually: -->
+<!---->
+<!-- ```python -->
+<!-- df[df.Type == "Setup"] -->
+<!-- ``` -->
+<!---->
+<!-- **Output** -->
+<!---->
+<!-- | Machine | Setup | Duration | -->
+<!-- |----------|----------|----------:| -->
+<!-- | 0 | s₀₄ | 12 | -->
+<!-- | 0 | s₄₆ | 30 | -->
+<!-- | 0 | s₆₀ | 24 | -->
+<!-- | 1 | s₀₇ | 16 | -->
+<!-- | 1 | s₇₅ | 37 | -->
+<!-- | 1 | s₅₀ | 20 | -->
+<!-- | 2 | s₀₁ | 3 | -->
+<!-- | 2 | s₁₃ | 33 | -->
+<!-- | 2 | s₃₈ | 3 | -->
+<!-- | 2 | s₈₀ | 6 | -->
+<!-- | 3 | s₀₂ | 31 | -->
+<!-- | 3 | s₂₉ | 2 | -->
+<!-- | 3 | s₉₀ | 18 | -->
+<!---->
+<!-- This table highlights which transitions are most expensive. For example: -->
+<!---->
+<!-- - The setup from **J7 → J5** on Machine 1 requires **37** time units, the largest setup in the schedule. -->
+<!-- - Several setups are relatively small (e.g., **J2 → J9** and **J3 → J8**), showing that some job sequences are naturally more compatible than others. -->
+<!-- - The total setup time varies considerably across machines, reinforcing the importance of considering sequence-dependent setups when building schedules. -->
+<!---->
+<!-- These analyses help explain *why* a schedule is optimal and can guide improvement efforts, such as setup reduction programs, machine specialization, or process redesign. -->
 
 ---
