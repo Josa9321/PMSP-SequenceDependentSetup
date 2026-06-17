@@ -1,6 +1,6 @@
 import itertools
 
-from .model_cmax import solve_instance
+from .models import solve_instance
 from .instance import InstanceDB
 
 
