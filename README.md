@@ -4,7 +4,7 @@ A REST API for solving the **Unrelated Parallel Machine Scheduling** problem wit
 
 ## The Problem
 
-This project addresses two related scheduling problems, denoted in standard three-field notation as **R|s<sub>ijk</sub>|C_max** and **R|s<sub>ijk</sub>, d<sub>j</sub>|∑(E<sub>j</sub> + T<sub>j<sub>)**:
+This project addresses two related scheduling problems, denoted in standard three-field notation as **R|s<sub>ijk</sub>|C_max** and **R|s<sub>ijk</sub>, d<sub>j</sub>|∑(E<sub>j</sub> + T<sub>j</sub>)**:
 
 | Field | Meaning |
 |-------|---------|
@@ -195,7 +195,7 @@ python ex_api_call.py
 
 Consider **4 machines** and **10 jobs** (9 jobs + 1 dummy job). Instance written in JSON can be found at [`example_instance.json`](./example_instance.json).
 
-### Optimal Solution for C_max
+### Optimal Solution for C<sub>max</sub>
 
 The solver returns the optimal job assignment and sequencing. Here, `J0` is a dummy job representing the initial state of a machine before any job is processed.
 
@@ -229,7 +229,7 @@ The solver returns the optimal job assignment and sequencing. Here, `J0` is a du
 
 </details>
 
-### Optimal Solution for ∑(E_j + T_j)
+### Optimal Solution for ∑(E<sub>j</sub> + T<sub>j</sub>)
 
 Using the same instance with the due dates from the example request, the solver finds a schedule that meets every due date exactly, resulting in zero total earliness and tardiness.
 
