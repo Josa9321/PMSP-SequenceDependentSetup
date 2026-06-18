@@ -99,6 +99,8 @@ def create_et_model(instance: InstancePMSP, method_name):
     m.s = pyo.Param(m.M, m.N0, m.N0, initialize=instance.s, domain=pyo.NonNegativeReals)
     m.d = pyo.Param(m.N0, initialize=instance.d, domain=pyo.NonNegativeReals)
 
+    m.Mi = pyo.Param(m.M, initialize=[instance.setup_time[i, :, :].max()*instance.n-1 for i in m.M])
+
     m.x = pyo.Var(m.M, m.N0, m.N0, domain=pyo.Binary)
     m.y = pyo.Var(m.M, m.N, domain=pyo.Binary)
 
@@ -128,7 +130,8 @@ def rule_c6_et(m, i, j, k):
     if j == k:
         return pyo.Constraint.Skip
     else:
-        return m.C[k] >= m.C[j] + m.s[i, j, k] + m.p[i, k] - 5000 * (1 - m.x[i, j, k])
+        M_ijk = sum(m.p[i, l] for l in m.N) + m.s[i, j, k] + m.Mi[i]
+        return m.C[k] >= m.C[j] + m.s[i, j, k] + m.p[i, k] - M_ijk * (1 - m.x[i, j, k])
 
 def rule_c7_et(m, j):
     return m.C[j] == m.d[j] + m.T[j] - m.E[j]
